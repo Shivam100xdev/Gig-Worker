@@ -30,3 +30,5 @@ lerna-debug.log*
 
 # local docker data (named volumes live outside anyway)
 databases/postgres/data/
+
+.freebuff/
