@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ledger-base text-ledger-text;
+  font-family: "Inter", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: theme("colors.signal.info" / 30%);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+}
+
+/* Visible keyboard focus, matched to the accent used for selection state */
+:focus-visible {
+  outline: 2px solid theme("colors.signal.info");
+  outline-offset: 2px;
+}

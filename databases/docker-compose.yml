@@ -1,0 +1,35 @@
+ # Gig — one command brings up Postgres (port 5433) and Redis (port 6380).
+# Ports are non-default so they won't clash with local installs.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gig-postgres
+    environment:
+      POSTGRES_USER: gig
+      POSTGRES_PASSWORD: gig_dev_password
+      POSTGRES_DB: gig_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - gig_pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gig -d gig_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: gig-redis
+    command: ["redis-server", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  gig_pgdata:

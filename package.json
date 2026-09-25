@@ -1,0 +1,18 @@
+{
+  "name": "gig-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Gig — full-stack income & ITR assistant. frontend/ + backend/ + databases/.",
+  "scripts": {
+    "setup": "cd databases && docker compose up -d && cd ../backend && npm install && npx prisma db push && cd ../frontend && npm install",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "typecheck": "npm --prefix frontend run build && npm --prefix backend run typecheck"
+  },
+  "dependencies": {
+    "@google/genai": "^2.24.0",
+    "dotenv": "^18.0.3",
+    "googleapis": "^181.0.0"
+  }
+}

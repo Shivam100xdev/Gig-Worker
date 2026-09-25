@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  mobile    String   @unique
+  name      String?
+  email     String?
+  pan       String?  @unique
+  gstin     String?  @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  platforms  Platform[]
+  records    IncomeRecord[]
+  statements BankStatement[]
+  filings    ItrFiling[]
+  reviews    Review[]
+  reminders  DeadlineReminder[]
+  gstInvoices GstInvoice[]
+  calendarToken CalendarToken?
+
+  @@map("users")
+}
+
+model Platform {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  category  String
+  hasRecords Boolean @default(false) @map("has_records")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  records IncomeRecord[]
+
+  @@index([userId])
+  @@map("platforms")
+}
+
+model IncomeRecord {
+  id                  String  @id @default(uuid()) @db.Uuid
+  userId              String  @map("user_id") @db.Uuid
+  platformId          String  @map("platform_id") @db.Uuid
+  incomeAmount        Decimal @map("income_amount") @db.Decimal(14, 2)
+  correspondingTax    Decimal @map("corresponding_tax") @db.Decimal(14, 2)
+  taxDeductionSource  String  @map("tax_deduction_source")
+  paymentStatus       String  @map("payment_status")
+  receiptConfirmed    Boolean @default(false) @map("receipt_confirmed")
+  receiptFileName     String? @map("receipt_file_name")
+  workStartDate       DateTime @map("work_start_date") @db.Date
+  workEndDate         DateTime @map("work_end_date") @db.Date
+  taxPayDeadline      DateTime @map("tax_pay_deadline") @db.Date
+  clientName          String? @map("client_name")
+  clientEmail         String? @map("client_email")
+  notes               String?
+  source              String  @default("manual")
+  statementId         String? @map("statement_id") @db.Uuid
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform  Platform       @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([platformId])
+  @@map("income_records")
+}
+
+model BankStatement {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  fileName     String   @map("file_name")
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  ocrStatus    String   @default("pending") @map("ocr_status")
+  errorMessage String?  @map("error_message")
+  uploadedAt   DateTime @default(now()) @map("uploaded_at")
+
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  StatementTransaction[]
+
+  @@index([userId])
+  @@map("bank_statements")
+}
+
+model StatementTransaction {
+  id           String  @id @default(uuid()) @db.Uuid
+  statementId  String  @map("statement_id") @db.Uuid
+  rawText      String? @map("raw_text")
+  amount       Decimal @db.Decimal(14, 2)
+  direction    String
+  txnDate      DateTime? @map("txn_date") @db.Date
+  narration    String?
+  counterparty String?
+  isAccepted   Boolean @default(false) @map("is_accepted")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  statement BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+
+  @@index([statementId])
+  @@map("statement_transactions")
+}
+
+model ItrFiling {
+  id                     String   @id @default(uuid()) @db.Uuid
+  userId                 String   @map("user_id") @db.Uuid
+  assessmentYear         String   @map("assessment_year")
+  regime                 String
+  computation            Json
+  incomeSources          Json     @map("income_sources")
+  status                 String   @default("submitted")
+  acknowledgementNumber  String   @map("acknowledgement_number")
+  filedAt                DateTime @default(now()) @map("filed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("itr_filings")
+}
+
+model CalendarToken {
+  userId       String   @id @map("user_id") @db.Uuid
+  accessToken  String   @map("access_token")
+  refreshToken String?  @map("refresh_token")
+  expiresAt    DateTime @map("expires_at")
+  scope        String?
+  connectedAt  DateTime @default(now()) @map("connected_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("calendar_tokens")
+}
+
+model DeadlineReminder {
+  id       String   @id @default(uuid()) @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  label    String
+  dueDate  DateTime @map("due_date") @db.Date
+  eventId  String?  @map("event_id")
+  syncedAt DateTime? @map("synced_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, label, dueDate])
+  @@index([userId])
+  @@index([dueDate])
+  @@map("deadline_reminders")
+}
+
+model GstInvoice {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  customerName  String   @map("customer_name")
+  customerGstin String?  @map("customer_gstin")
+  invoiceNumber String   @map("invoice_number")
+  invoiceDate   DateTime @map("invoice_date") @db.Date
+  taxableValue  Decimal  @map("taxable_value") @db.Decimal(14, 2)
+  gstRate       Decimal  @map("gst_rate") @db.Decimal(5, 2)
+  cgst          Decimal  @default(0) @db.Decimal(14, 2)
+  sgst          Decimal  @default(0) @db.Decimal(14, 2)
+  igst          Decimal  @default(0) @db.Decimal(14, 2)
+  total         Decimal  @default(0) @db.Decimal(14, 2)
+  irn           String?
+  irnGenerated  Boolean  @default(false) @map("irn_generated")
+  ackNo         String?  @map("ack_no")
+  ackDate       DateTime? @map("ack_date")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("gst_invoices")
+}
+
+model Review {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @map("user_id") @db.Uuid
+  displayName  String   @map("display_name")
+  platformName String?  @map("platform_name")
+  rating       Int
+  headline     String
+  body         String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("reviews")
+}
+
+model Faq {
+  id        Int      @id @default(autoincrement())
+  question  String
+  answer    String
+  sortOrder Int      @default(0) @map("sort_order")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("faqs")
+}
