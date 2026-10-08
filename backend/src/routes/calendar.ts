@@ -5,7 +5,7 @@ import { calendarService } from "../services/calendarService.js";
 
 const router = Router();
 
-router.get("/login", async (req, res) => {
+router.get("/login", async (_req, res) => {
   try {
     const consentUrl = calendarService.consentUrl();
     res.redirect(consentUrl)
