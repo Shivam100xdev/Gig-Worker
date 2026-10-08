@@ -1,14 +1,3 @@
-/**
- * Single place that knows whether we're talking to the real backend or
- * running against local mocks. Every service in lib/api/* goes through
- * this file — nothing else in the app should reference `fetch` directly
- * or read `import.meta.env` for API config.
- *
- * Mock mode (default, VITE_USE_MOCKS!=="false") keeps the whole app usable
- * without Docker: OTP codes surface in the UI banner, data persists to
- * localStorage exactly as before, and the new sections (OCR import, GST
- * desk, calendar, AI chat, reviews) run on in-memory fakes.
- */
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== "false";

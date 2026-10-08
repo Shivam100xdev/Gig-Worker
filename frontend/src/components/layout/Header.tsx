@@ -18,7 +18,7 @@ export function Header() {
         </div>
         <div className="text-left">
           <h1 className="font-display text-sm font-600 leading-none text-ledger-text">Gig</h1>
-          <p className="mt-0.5 text-[11px] leading-none text-ledger-muted">Gig income, one ledger</p>
+          <p className="mt-0.5 text-[11px] leading-none text-ledger-muted"></p>
         </div>
       </button>
       <div className="flex items-center gap-2">

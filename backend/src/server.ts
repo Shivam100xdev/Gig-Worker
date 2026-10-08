@@ -35,7 +35,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api", ledgerRoutes);
 app.use("/api/statements", statementRoutes);
 app.use("/api/gst", gstRoutes);
-app.use("/api/calendar", authRoutes);
+app.use("/api/calendar", calendarRoutes);
 app.use("/api/assistant", assistantRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/faqs", faqRoutes);

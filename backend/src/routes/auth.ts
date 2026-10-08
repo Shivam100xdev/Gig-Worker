@@ -4,15 +4,6 @@ import { requireAuth, requireSessionUser, readSession } from "../middleware/auth
 import { authService, type OtpPurpose } from "../services/authService.js";
 import { prisma } from "../lib/prisma.js";
 import { getGoogleAuthUrl, getCode } from "../services/gAuth.js";
-/**
- * Mobile-OTP auth:
- *   POST /api/auth/otp/request  { mobile, purpose }  -> send OTP (Redis, 5 min TTL)
- *   POST /api/auth/otp/verify   { mobile, code }     -> creates user on first login, sets JWT cookie
- *   GET  /api/auth/session      -> current user or 401
- *   PATCH /api/auth/profile     { name?, email? }
- *   POST /api/auth/pan          { pan, code }  -> PAN change requires fresh OTP (high-value field)
- *   POST /api/auth/logout
- */
 
 const router = Router();
 

@@ -16,7 +16,7 @@ export function Sidebar() {
           Your platforms
         </h2>
         <p className="mt-0.5 text-[11px] text-ledger-muted">
-          Add every place you earn from — we can't pull this automatically yet.
+          
         </p>
       </div>
 

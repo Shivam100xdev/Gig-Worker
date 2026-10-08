@@ -4,13 +4,6 @@ import { requireAuth, requireSessionUser } from "../middleware/authUse.js";
 import { prisma } from "../lib/prisma.js";
 import { computeTaxBackend } from "../lib/taxConstants.js";
 
-/**
- * Ledger + filing — implements the routes the frontend's
- * platformService/itrService already imply, now against Postgres:
- *   GET/POST/DELETE /api/platforms
- *   GET/POST/PATCH/DELETE /api/records
- *   POST /api/itr/file, POST /api/itr/export
- */
 
 const router = Router();
 

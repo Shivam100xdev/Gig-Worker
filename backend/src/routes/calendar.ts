@@ -2,16 +2,17 @@ import { Router } from "express";
 import { requireAuth, requireSessionUser } from "../middleware/authUse.js";
 import { calendarService } from "../services/calendarService.js";
 
-/**
- * Google Calendar endpoints for ITR deadline reminders.
- *   GET  /api/calendar            status + upcoming deadlines (+sync state)
- *   GET  /api/calendar/auth       redirect to Google consent
- *   GET  /api/calendar/callback   OAuth redirect target (configured in GCP)
- *   POST /api/calendar/sync       upsert statutory deadline events
- *   POST /api/calendar/disconnect delete stored tokens
- */
 
 const router = Router();
+
+router.get("/login", async (req, res) => {
+  try {
+    const consentUrl = calendarService.consentUrl();
+    res.redirect(consentUrl)
+  } catch (err) {
+    console.log(err);
+  }
+});
 
 router.get("/", requireAuth, async (req, res, next) => {
   try {

@@ -10,7 +10,7 @@ import { prisma } from "../lib/prisma.js";
  * the (user,label,due) unique constraint + eventId persistence).
  */
 
-const SCOPES = ["https://www.googleapis.com/auth/calendar.events"];
+const SCOPES = ["https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/userinfo.profile"];
 
 function oauthClient() {
   return new google.auth.OAuth2(
@@ -62,6 +62,7 @@ export const calendarService = {
     const oauth = oauthClient();
     return oauth.generateAuthUrl({
       access_type: "offline", // need a refresh token for long-lived reminders
+      response_type: "code",
       prompt: "consent",
       scope: SCOPES,
     });
@@ -70,6 +71,8 @@ export const calendarService = {
   async exchangeCode(code: string, userId: string, mobile: string) {
     const oauth = oauthClient();
     const { tokens } = await oauth.getToken(code);
+    console.log(tokens)
+    if(!tokens.id_token) throw new Error("No id token");
     await prisma.calendarToken.upsert({
       where: { userId },
       update: {
@@ -86,6 +89,8 @@ export const calendarService = {
         scope: tokens.scope ?? null,
       },
     });
+
+    // create session as main login system
     return { userId, mobile };
   },
 

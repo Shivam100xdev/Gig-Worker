@@ -5,11 +5,7 @@ import { authService } from "@/lib/api/authService";
 import { platformService } from "@/lib/api/platformService";
 import { USE_MOCKS, mockSessionStore, api } from "@/lib/api/client";
 
-/**
- * Session lifecycle: restores any existing session on mount, exposes the
- * OTP login steps, and on login hydrates the ledger store from Postgres
- * (real mode) so the rest of the app reads atoms as before.
- */
+
 export function useSession() {
   const [user, setUser] = useAtom(sessionUserAtom);
   const [status, setStatus] = useState<"loading" | "anon" | "ready">("loading");
@@ -35,8 +31,7 @@ export function useSession() {
     };
   }, [setUser]);
 
-  // Mirror identity/profile fields into the ledger profile atom so the
-  // filing payload and TaxpayerBar keep working unchanged.
+  
   useEffect(() => {
     if (!user) return;
     setProfile((p) => ({
@@ -57,8 +52,8 @@ export function useSession() {
     async (mobile: string, code: string) => {
       const loggedIn = await authService.verifyOtp(mobile, code);
       setUser(loggedIn);
-      // Real mode: hydrate the ledger from Postgres. Mock mode: keep
-      // whatever's in localStorage.
+      
+      
       if (!USE_MOCKS) {
         const [platforms, records] = await Promise.all([
           platformService.list(),

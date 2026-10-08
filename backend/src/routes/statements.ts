@@ -5,15 +5,6 @@ import { requireAuth, requireSessionUser } from "../middleware/authUse.js";
 import { prisma } from "../lib/prisma.js";
 import { ocrService } from "../services/ocrService.js";
 
-/**
- * Bank-statement import: upload -> OCR -> review -> accept into ledger.
- *
- * POST /api/statements            multipart upload (pdf/png/jpg, <= 10MB)
- * GET  /api/statements            list the user's statements
- * GET  /api/statements/:id        statement + its proposed transactions
- * POST /api/statements/:id/accept accept selected transactions; each becomes
- *                                 an income_record (source = "ocr_import")
- */
 
 const router = Router();
 const upload = multer({
