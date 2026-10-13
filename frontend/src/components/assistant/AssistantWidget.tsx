@@ -2,12 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Send, X, Loader2, Sparkles } from "lucide-react";
 import { assistantService, type ChatTurn } from "@/lib/api/extrasService";
 
-/**
- * "Ask anything" — Gemini-powered assistant docked bottom-right.
- * Server-side proxy injects the user's live ledger context (totals, filing
- * status, checklist state) into the system prompt; history stays in the
- * component, nothing about the chat is persisted.
- */
+
 const SUGGESTED = [
   "When is my ITR deadline?",
   "Do I need GST registration?",

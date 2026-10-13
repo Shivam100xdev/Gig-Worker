@@ -36,11 +36,7 @@ export interface Platform {
   createdAt: string; // ISO date
 }
 
-/**
- * One reported earning entry under a platform. This mirrors the fields
- * sketched in the product wireframe: income, tax, payment status,
- * work duration, filing deadline, and the client who paid it.
- */
+
 export interface IncomeRecord {
   id: string;
   platformId: string;
@@ -48,9 +44,8 @@ export interface IncomeRecord {
   correspondingTax: number; // INR, tax already known/estimated against this income
   taxDeductionSource: TaxDeductionSource;
   paymentStatus: PaymentStatus;
-  /** Required confirmation step when tax was reported paid via an
-   * automated source rather than typed by hand — mirrors the
-   * "user has to confirm with tax receipt" note in the brief. */
+  
+
   receiptConfirmed: boolean;
   receiptFileName?: string;
   workStartDate: string; // ISO date
@@ -87,11 +82,7 @@ export interface TaxComputation {
 
 export type ItrFilingStatus = "draft" | "ready" | "submitted" | "acknowledged";
 
-/**
- * The payload the frontend hands off to a filing backend. Shaped close to
- * what an ITR-1/ITR-4 preparer would need, without pretending to be the
- * literal government schema (that mapping is a backend concern).
- */
+
 export interface ItrReturnPayload {
   assessmentYear: string; // e.g. "2026-27"
   regime: AssessmentRegime;

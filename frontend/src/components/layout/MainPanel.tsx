@@ -76,16 +76,7 @@ function LedgerSection() {
 }
 
 function EmptyState({ hasPlatforms }: { hasPlatforms: boolean }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-ledger-line py-20 text-center">
-      <p className="font-display text-base text-ledger-text">
-        {hasPlatforms ? "Select a platform to log income" : "Add your first platform to get started"}
-      </p>
-      <p className="mt-1.5 max-w-sm text-sm text-ledger-muted">
-        {hasPlatforms
-          ? "Pick one from the sidebar, then log what you earned and from whom."
-          : "We can't pull income automatically yet, so start by telling us where you earn from."}
-      </p>
-    </div>
-  );
+  return (<div className="">
+
+    </div>);
 }

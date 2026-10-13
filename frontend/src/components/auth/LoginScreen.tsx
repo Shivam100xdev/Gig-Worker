@@ -4,12 +4,8 @@ import { TextInput } from "@/components/common/TextInput";
 import { Button } from "@/components/common/Button";
 import { useSession } from "@/hooks/useSession";
 
-/**
- * Mobile-OTP login — the only door into the app. Two steps:
- *   1. enter mobile -> request OTP (Redis-backed, 5-min TTL server-side)
- *   2. enter the 6-digit code -> verified, session cookie issued
- * First login creates the account; there is no separate signup.
- */
+
+ 
 export function LoginScreen() {
   const { requestOtp, verifyOtp } = useSession();
   const [step, setStep] = useState<"mobile" | "code">("mobile");
