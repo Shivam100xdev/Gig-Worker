@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import { ReceiptText, BadgeCheck, AlertTriangle, Plus, Loader2 } from "lucide-react";
+import { useAtomValue } from "jotai";
+import { ReceiptText, BadgeCheck, AlertTriangle, Plus, Download, Loader2 } from "lucide-react";
 import { gstService, type GstInvoiceDto, type GstSummary } from "@/lib/api/gstService";
+import { taxpayerProfileAtom } from "@/store/atoms";
+import { downloadInvoicePdf, type InvoiceSellerDetails } from "@/lib/invoicePdf";
 import { Button } from "@/components/common/Button";
 import { TextInput } from "@/components/common/TextInput";
 import { Modal } from "@/components/common/Modal";
@@ -17,11 +20,35 @@ export function GstDesk() {
   const [showCreate, setShowCreate] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const profile = useAtomValue(taxpayerProfileAtom);
 
   async function refresh() {
     const [s, list] = await Promise.all([gstService.summary(), gstService.listInvoices()]);
     setSummary(s);
     setInvoices(list);
+  }
+
+  /** Seller copy for invoice PDFs — identity fields are hydrated from the
+   * user's DB row, GSTIN from the GST summary endpoint. */
+  function sellerDetails(): InvoiceSellerDetails {
+    return {
+      name: profile.name,
+      pan: profile.pan,
+      gstin: summary?.gstin ?? null,
+    };
+  }
+
+  async function handleDownloadPdf(inv: GstInvoiceDto) {
+    setBusyId(inv.id);
+    setNotice(null);
+    try {
+      await downloadInvoicePdf(inv, sellerDetails());
+      setNotice(`Invoice ${inv.invoiceNumber} downloaded as PDF.`);
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "PDF generation failed.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   useEffect(() => {
@@ -97,12 +124,13 @@ export function GstDesk() {
               <th className="px-4 py-2.5 text-right font-medium">GST</th>
               <th className="px-4 py-2.5 text-right font-medium">Total</th>
               <th className="px-4 py-2.5 font-medium">e-Invoice</th>
+              {/* <th className="px-4 py-2.5 font-medium">PDF</th> */}
             </tr>
           </thead>
           <tbody>
             {invoices.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-xs text-ledger-muted">
+                <td colSpan={7} className="px-4 py-10 text-center text-xs text-ledger-muted">
                   No invoices yet. Create one to get started — GST is auto-split CGST/SGST or IGST.
                 </td>
               </tr>
@@ -119,7 +147,7 @@ export function GstDesk() {
                     @ {inv.gstRate}%
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-ledger-text">{formatINR(inv.total)}</td>
-                  <td className="px-4 py-3">
+                  {/* <td className="px-4 py-3">
                     {inv.irnGenerated ? (
                       <span className="flex items-center gap-1.5 text-xs text-signal-filed">
                         <BadgeCheck size={14} /> IRN ok
@@ -134,6 +162,16 @@ export function GstDesk() {
                         <ReceiptText size={12} /> Generate IRN
                       </Button>
                     )}
+                  </td> */}
+                  <td className="px-4 py-3">
+                    <Button
+                      variant="secondary"
+                      className="px-2.5 py-1 text-xs"
+                      loading={busyId === inv.id}
+                      onClick={() => handleDownloadPdf(inv)}
+                    >
+                      {busyId === inv.id ? "Generating…" : <><Download size={12} /> Invoice PDF</>}
+                    </Button>
                   </td>
                 </tr>
               ))
@@ -145,9 +183,13 @@ export function GstDesk() {
       {showCreate && (
         <CreateInvoiceModal
           onClose={() => setShowCreate(false)}
-          onCreated={() => {
+          onCreated={async (created) => {
             setShowCreate(false);
-            refresh().catch(() => undefined);
+            // Auto-download: the freshly persisted row is re-fetched from the
+            // DB so the PDF always matches what was saved.
+            await refresh().catch(() => undefined);
+            const saved = invoices.find((i) => i.id === created.id) ?? created;
+            await handleDownloadPdf(saved);
           }}
         />
       )}
@@ -170,7 +212,7 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   );
 }
 
-function CreateInvoiceModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function CreateInvoiceModal({ onClose, onCreated }: { onClose: () => void; onCreated: (invoice: GstInvoiceDto) => void | Promise<void> }) {
   const [customerName, setCustomerName] = useState("");
   const [customerGstin, setCustomerGstin] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${new Date().getFullYear()}-`);
@@ -193,7 +235,7 @@ function CreateInvoiceModal({ onClose, onCreated }: { onClose: () => void; onCre
     setBusy(true);
     setError(null);
     try {
-      await gstService.createInvoice({
+      const created = await gstService.createInvoice({
         customerName: customerName.trim(),
         customerGstin: customerGstin.trim() || undefined,
         invoiceNumber: invoiceNumber.trim(),
@@ -202,7 +244,7 @@ function CreateInvoiceModal({ onClose, onCreated }: { onClose: () => void; onCre
         gstRate,
         isInterState,
       });
-      onCreated();
+      await onCreated(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't create the invoice.");
       setBusy(false);

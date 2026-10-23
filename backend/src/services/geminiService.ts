@@ -50,40 +50,13 @@ function formatINR(amount: number): string {
 }
 
 function contextBlock(ctx: AssistantContext): string {
-  return `
---- USER LEDGER CONTEXT ---
-
-User: ${ctx.userName || "unnamed"}
-
-PAN on file:
-$ {ctx.hasPan ? "yes" : "no"}
-
-Total reported income:
-// $ {formatINR(ctx.totalIncome)}
-
-Tax already deducted/paid:
-// $ {formatINR(ctx.totalTaxPaid)} 
-
-Estimated tax liability:
-// $ {formatINR(ctx.estimatedLiability)}
-
-// $ {
-  ctx.balancePayable >= 0
-   // ? Balance payable: $ {formatINR(ctx.balancePayable)}
-    // : Refund due: $ {formatINR(Math.abs(ctx.balancePayable))}
-}
-
-Filing status:
-$ {ctx.filingStatus}
-
-Unconfirmed receipts:
-$ {ctx.unconfirmedReceipts}
-
-Turnover over GST threshold:
-$ {ctx.turnoverOverGstThreshold ? "yes" : "no"}
-
------------------------------
-`;
+  return `\n--- USER LEDGER CONTEXT ---\n\nUser: ${ctx.userName || "unnamed"}\n\nPAN on file: ${ctx.hasPan ? "yes" : "no"}\n\nTotal reported income: ${ctx.totalIncome == null ? "no entries yet" : formatINR(ctx.totalIncome)}\n\nTax already deducted/paid: ${ctx.totalTaxPaid == null ? "n/a" : formatINR(ctx.totalTaxPaid)}\n\nEstimated tax liability: ${ctx.estimatedLiability == null ? "n/a" : formatINR(ctx.estimatedLiability)}\n\n${
+    ctx.balancePayable != null
+      ? ctx.balancePayable >= 0
+        ? `Balance payable: ${formatINR(ctx.balancePayable)}`
+        : `Refund due: ${formatINR(Math.abs(ctx.balancePayable))}`
+      : ""
+  }\n\nFiling status: ${ctx.filingStatus}\n\nUnconfirmed receipts: ${ctx.unconfirmedReceipts ?? "n/a"}\n\nTurnover over GST threshold: ${ctx.turnoverOverGstThreshold ? "yes" : "no"}\n\n-----------------------------\n`;
 }
 
 export const geminiService = {

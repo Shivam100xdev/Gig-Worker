@@ -14,6 +14,9 @@ export interface SessionUser {
   userId: string;
   mobile: string;
 }
+export interface AuthUser extends Request {
+  sessionUser: SessionUser
+}
 
 export function issueSession(res: Response, user: SessionUser) {
   const token = jwt.sign(user, JWT_SECRET, { expiresIn: `${SESSION_TTL_SECONDS}s` });
@@ -30,7 +33,8 @@ export function clearSession(res: Response) {
 }
 
 export function readSession(req: Request): SessionUser | null {
-  const token = req.cookies?.[COOKIE_NAME];
+  const { gig_session} = req.cookies;
+  const token = gig_session;
   if (!token) return null;
   try {
     return jwt.verify(token, JWT_SECRET) as SessionUser;

@@ -71,7 +71,7 @@ export const authService = {
     }
   },
 
-  async updateProfile(patch: { name?: string; email?: string; gstin?: string }): Promise<SessionUser> {
+  async updateProfile(patch: { name?: string; pan?: string; email?: string; gstin?: string }): Promise<SessionUser> {
     if (USE_MOCKS) {
       await mockDelay(300);
       const user = { ...mockUser(), ...patch };

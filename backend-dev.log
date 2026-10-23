@@ -1,0 +1,11 @@
+
+> gig-backend@0.1.0 dev
+> tsx watch src/server.ts
+
+◇ injected env (13) from .env
+◇ injected env (0) from .env
+gig-backend listening on http://localhost:402:47:49 pm [tsx] change in ./src\server.ts Restarting...
+◇ injected env (13) from .env
+◇ injected env (0) from .env
+gig-backend listening on http://localhost:0gig-backend listening on http://localhost:4000
+[sms:dev] OTP for +919810000001: 252285

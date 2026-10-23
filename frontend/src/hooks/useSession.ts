@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAtom, useSetAtom } from "jotai";
-import { sessionUserAtom, taxpayerProfileAtom, platformsAtom, incomeRecordsAtom } from "@/store/atoms";
+import {
+  sessionUserAtom,
+  taxpayerProfileAtom,
+  platformsAtom,
+  incomeRecordsAtom,
+  mainSectionAtom,
+} from "@/store/atoms";
 import { authService } from "@/lib/api/authService";
 import { platformService } from "@/lib/api/platformService";
-import { USE_MOCKS, mockSessionStore, api } from "@/lib/api/client";
+import { recordService } from "@/lib/api/recordService";
+import { USE_MOCKS, mockSessionStore } from "@/lib/api/client";
 
+/** Legacy per-user keys that must never survive a sign-out / account switch. */
+const STALE_PROFILE_KEY = "gigtax:taxpayer-profile";
 
 export function useSession() {
   const [user, setUser] = useAtom(sessionUserAtom);
@@ -12,6 +21,17 @@ export function useSession() {
   const setProfile = useSetAtom(taxpayerProfileAtom);
   const setPlatforms = useSetAtom(platformsAtom);
   const setRecords = useSetAtom(incomeRecordsAtom);
+  const setSection = useSetAtom(mainSectionAtom);
+
+  /** Wipe anything user-specific from localStorage before another account
+   * (or a fresh first-visit) hydrates from the DB. */
+  function resetLocalUserData() {
+    localStorage.removeItem(STALE_PROFILE_KEY); // legacy atomWithStorage key
+    setProfile((p) => ({ ...p, name: "", pan: "", email: "" }));
+    setRecords([]);
+    setPlatforms([]);
+    setSection("dashboard");
+  }
 
   // Restore session on first load.
   useEffect(() => {
@@ -31,14 +51,16 @@ export function useSession() {
     };
   }, [setUser]);
 
-  
+  // Hydrate the taxpayer profile from the signed-in user's DB row whenever
+  // the session identity changes. Local edits are never merged in on top of
+  // another user's identity.
   useEffect(() => {
     if (!user) return;
     setProfile((p) => ({
       ...p,
-      name: p.name || user.name || "",
-      email: p.email || user.email || "",
-      pan: user.pan ?? p.pan,
+      name: user.name ?? "",
+      email: user.email ?? "",
+      pan: user.pan ?? "",
     }));
   }, [user, setProfile]);
 
@@ -51,30 +73,46 @@ export function useSession() {
   const verifyOtp = useCallback(
     async (mobile: string, code: string) => {
       const loggedIn = await authService.verifyOtp(mobile, code);
+      resetLocalUserData();
       setUser(loggedIn);
-      
-      
+
       if (!USE_MOCKS) {
-        const [platforms, records] = await Promise.all([
-          platformService.list(),
-          apiListRecords(),
-        ]);
-        if (platforms) setPlatforms(platforms);
-        if (records) setRecords(records);
+        // DB is the source of truth: pull this account's platforms and the
+        // full income ledger before the first render of the workspace.
+        try {
+          const [platforms, records] = await Promise.all([
+            platformService.list(),
+            recordService.list(),
+          ]);
+          setPlatforms(platforms ?? []);
+          setRecords(records);
+        } catch {
+          // Backend briefly down: the workspace still opens empty and the
+          // ledger sections retry on their own refresh calls.
+        }
+      } else {
+        await loadMockWorkspace();
       }
       return loggedIn;
     },
-    [setUser, setPlatforms, setRecords]
+    [setUser, setProfile, setPlatforms, setRecords, setSection]
   );
 
+  async function loadMockWorkspace() {
+    const platforms = await platformService.list();
+    if (platforms) setPlatforms(platforms);
+  }
+
   const updateProfile = useCallback(
-    async (patch: { name?: string; email?: string; gstin?: string }) => {
+    async (patch: { name?: string; pan?: string; email?: string; gstin?: string }) => {
       const updated = await authService.updateProfile(patch);
       setUser(updated);
       setProfile((p) => ({
         ...p,
-        name: patch.name ?? p.name,
-        email: patch.email ?? p.email,
+        name: updated.name ?? p.name,
+        pan: updated.pan ?? p.pan,
+        email: updated.email ?? p.email,
+        gstin: updated.gstin,
       }));
       return updated;
     },
@@ -85,17 +123,9 @@ export function useSession() {
     await authService.logout();
     setUser(null);
     mockSessionStore.clear();
+    resetLocalUserData();
     setStatus("ready");
-  }, [setUser]);
+  }, [setUser, setProfile, setRecords, setPlatforms, setSection]);
 
   return { user, status, requestOtp, verifyOtp, updateProfile, logout };
-}
-
-async function apiListRecords() {
-  try {
-    const res = await api.get<{ records: never[] }>("/records");
-    return res.records;
-  } catch {
-    return null;
-  }
 }

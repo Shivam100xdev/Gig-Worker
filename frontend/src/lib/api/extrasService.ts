@@ -53,6 +53,8 @@ export interface CalendarState {
   connected: boolean;
   configured: boolean;
   statutory: { label: string; dueDate: string; syncedToCalendar: boolean }[];
+  /** Tax-due deadlines derived live from the signed-in user's income ledger. */
+  recordDeadlines: { label: string; dueDate: string; amount: number }[];
 }
 
 const STATUTORY = () => {
@@ -78,13 +80,23 @@ export const calendarExtrasService = {
         connected: synced,
         configured,
         statutory: STATUTORY().map((d) => ({ ...d, syncedToCalendar: synced })),
+        recordDeadlines: mockRecordDeadlines(),
       };
     }
     try {
-      const res = await api.get<{ connected: boolean; statutory: CalendarState["statutory"] }>("/calendar");
-      return { connected: res.connected, configured: true, statutory: res.statutory };
+      const res = await api.get<{
+        connected: boolean;
+        statutory: CalendarState["statutory"];
+        recordDeadlines: CalendarState["recordDeadlines"];
+      }>("/calendar");
+      return { connected: res.connected, configured: true, statutory: res.statutory, recordDeadlines: res.recordDeadlines };
     } catch {
-      return { connected: false, configured: false, statutory: STATUTORY().map((d) => ({ ...d, syncedToCalendar: false })) };
+      return {
+        connected: false,
+        configured: false,
+        statutory: STATUTORY().map((d) => ({ ...d, syncedToCalendar: false })),
+        recordDeadlines: [],
+      };
     }
   },
 
@@ -109,6 +121,31 @@ export const calendarExtrasService = {
     await api.post("/calendar/sync");
   },
 };
+
+/** Mock-mode stand-in for the backend's ledger-derived deadlines. */
+function mockRecordDeadlines() {
+  try {
+    const raw = localStorage.getItem("gigtax:income-records");
+    const records: { platformId: string; incomeAmount: number; taxPayDeadline: string; paymentStatus: string; client: { name: string } }[] =
+      raw ? (JSON.parse(raw) as never) : [];
+    const platformsRaw = localStorage.getItem("gigtax:platforms");
+    const platforms: { id: string; name: string }[] = platformsRaw ? (JSON.parse(platformsRaw) as never) : [];
+    const platformName = (id: string) => platforms.find((p) => p.id === id)?.name ?? "Platform";
+    const merged = new Map<string, { label: string; dueDate: string; amount: number }>();
+    for (const r of records) {
+      if (r.paymentStatus === "paid") continue;
+      const dueDate = r.taxPayDeadline.slice(0, 10);
+      const label = `Tax due — ${platformName(r.platformId)}${r.client.name ? ` · ${r.client.name}` : ""}`;
+      const key = `${label}|${dueDate}`;
+      const existing = merged.get(key);
+      if (existing) existing.amount += r.incomeAmount;
+      else merged.set(key, { label, dueDate, amount: r.incomeAmount });
+    }
+    return [...merged.values()];
+  } catch {
+    return [];
+  }
+}
 
 // ---------------- Reviews ----------------
 

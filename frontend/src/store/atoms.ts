@@ -8,13 +8,6 @@ import type {
 } from "@/types";
 import type { SessionUser } from "@/lib/api/authService";
 
-/**
- * Storage layer:
- * - Mock mode: platforms/records/profile persist to localStorage via
- *   atomWithStorage so a refresh doesn't wipe self-reported income.
- * - Real mode: these hydrate from the backend on login (see sessionAtoms
- *   hydrateSession) and writes flow through lib/api services.
- */
 export const platformsAtom = atomWithStorage<Platform[]>("gigtax:platforms", []);
 
 export const incomeRecordsAtom = atomWithStorage<IncomeRecord[]>(
@@ -22,18 +15,22 @@ export const incomeRecordsAtom = atomWithStorage<IncomeRecord[]>(
   []
 );
 
-export const taxpayerProfileAtom = atomWithStorage<TaxpayerProfile>(
-  "gigtax:taxpayer-profile",
-  {
-    name: "",
-    pan: "",
-    email: "",
-    assessmentYear: "2026-27",
-    regime: "new",
-    gstRegistered: false,
-    estimatedAnnualTurnover: 0,
-  }
-);
+/**
+ * Taxpayer profile — the identity fields (name/pan/email) live on the User
+ * row in Postgres, NOT in localStorage: they are hydrated per user from the
+ * session (useSession) and persisted through PATCH /api/auth/profile, so one
+ * user's name/PAN never shows up pre-filled for the next user.
+ * assessmentYear/regime/gstRegistered remain local UI preferences.
+ */
+export const taxpayerProfileAtom = atom<TaxpayerProfile>({
+  name: "",
+  pan: "",
+  email: "",
+  assessmentYear: "2026-27",
+  regime: "new",
+  gstRegistered: false,
+  estimatedAnnualTurnover: 0,
+});
 
 /** Signed-in user (mobile-OTP session). Null = logged out. Not persisted. */
 export const sessionUserAtom = atom<SessionUser | null>(null);

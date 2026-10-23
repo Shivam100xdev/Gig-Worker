@@ -7,7 +7,7 @@ import { getGoogleAuthUrl, getCode } from "../services/gAuth.js";
 
 const router = Router();
 
-router.get("/login-google", (req: Request, res: Response) => {
+router.get("/login-google", (_req: Request, res: Response) => {
   const url = getGoogleAuthUrl();
   return res.redirect(url);
 })
@@ -17,7 +17,7 @@ router.get("/callback", async (req:Request, res:Response) => {
 
   if(!code) return res.status(400).json({message: "Missing Code"});
 
-  const success = await getCode(code as string);
+  await getCode(code as string);
   res.status(200).json({message: "Logged In successfully. 🥰"});
 })
 const requestSchema = z.object({
@@ -88,12 +88,13 @@ router.patch("/profile", requireAuth, async (req, res, next) => {
     const input = z
       .object({
         name: z.string().trim().max(120).optional(),
+        pan: z.string().trim().regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Format: AAAAA9999A").optional(),
         email: z.string().trim().email().optional(),
         gstin: z.string().trim().max(15).optional(),
       })
       .parse(req.body);
     const user = await authService.updateProfile(userId, input);
-    res.json({ user: { id: user.id, name: user.name, email: user.email, gstin: user.gstin } });
+    res.json({ user: { id: user.id, name: user.name, email: user.email, pan: user.pan, gstin: user.gstin } });
   } catch (err) {
     next(err);
   }

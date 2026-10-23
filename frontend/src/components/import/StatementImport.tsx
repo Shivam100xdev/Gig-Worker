@@ -10,8 +10,10 @@ import {
   Inbox,
 } from "lucide-react";
 import { statementService, type ProposedTransaction, type StatementDto } from "@/lib/api/statementService";
-import { platformsAtom } from "@/store/atoms";
-import { useAtomValue } from "jotai";
+import { incomeRecordsAtom, platformsAtom } from "@/store/atoms";
+import { recordService } from "@/lib/api/recordService";
+import { USE_MOCKS } from "@/lib/api/client";
+import { useSetAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/common/Button";
 import { formatINR } from "@/lib/taxEngine";
 
@@ -32,6 +34,7 @@ export function StatementImport() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const platforms = useAtomValue(platformsAtom);
   const [platformId, setPlatformId] = useState<string>("");
+  const setIncomeRecords = useSetAtom(incomeRecordsAtom);
 
   useEffect(() => {
     statementService.list().then(setStatements).catch(() => undefined);
@@ -98,6 +101,14 @@ export function StatementImport() {
       const res = await statementService.accept(activeId, [...selected], platformId);
       setTransactions((prev) => prev.map((t) => (selected.has(t.id) ? { ...t, isAccepted: true } : t)));
       setSelected(new Set());
+      // Imported rows live in the DB — pull the fresh ledger into the store
+      // so the dashboard/deadlines reflect them immediately.
+      if (!USE_MOCKS) {
+        recordService
+          .list()
+          .then(setIncomeRecords)
+          .catch(() => undefined);
+      }
       setStatements((prev) =>
         prev.map((s) => (s.id === activeId ? { ...s, acceptedCount: s.acceptedCount + res.importedCount } : s))
       );

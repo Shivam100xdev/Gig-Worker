@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, CalendarCheck, RefreshCw, CheckCircle2, ExternalLink } from "lucide-react";
 import { calendarExtrasService, type CalendarState } from "@/lib/api/extrasService";
+import { formatINR } from "@/lib/taxEngine";
 import { Button } from "@/components/common/Button";
 
 /**
@@ -84,6 +85,32 @@ export function DeadlineCard() {
           );
         })}
       </ul>
+
+      {state.recordDeadlines.length > 0 && (
+        <div className="flex flex-col gap-1.5 rounded-md border border-ledger-line/70 bg-ledger-raised/40 p-3">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-ledger-muted">
+            Tax-due dates from your ledger · updates as you log income
+          </p>
+          <ul className="flex flex-col divide-y divide-ledger-line/50">
+            {state.recordDeadlines.map((d) => {
+              const due = new Date(`${d.dueDate.slice(0, 10)}T00:00:00`);
+              const past = due.getTime() < new Date().setHours(0, 0, 0, 0);
+              return (
+                <li key={`${d.label}-${d.dueDate}`} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+                  <span className={`text-sm ${past ? "text-signal-overdue" : "text-ledger-text"}`}>{d.label}</span>
+                  <span className="flex items-center gap-2 font-mono text-xs">
+                    <span className="text-ledger-text">{formatINR(d.amount)}</span>
+                    <span className={past ? "text-signal-overdue" : "text-ledger-muted"}>
+                      due {due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    </span>
+                    {state.connected && <CalendarCheck size={13} className="text-ledger-muted/50" />}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {notice && <p className="text-xs text-signal-info">{notice}</p>}
 

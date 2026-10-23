@@ -6,8 +6,10 @@ import { prisma } from "../lib/prisma.js";
  *
  * OAuth flow: /api/calendar/auth -> Google consent -> /api/calendar/callback
  * stores tokens (calendar_tokens table). "Sync reminders" upserts the
- * statutory deadlines the user hasn't already got as events (idempotent via
- * the (user,label,due) unique constraint + eventId persistence).
+ * statutory deadlines AND every unpaid income record's tax pay deadline as
+ * events (idempotent via the (user,label,due) unique constraint + eventId
+ * persistence), so the deadline list is dynamic: log an income entry and its
+ * deadline shows up; pay it and it drops off.
  */
 
 const SCOPES = ["https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/userinfo.profile"];
@@ -31,6 +33,42 @@ export function statutoryDeadlines(now = new Date()): { label: string; dueDate: 
     { label: "Advance tax Q4", dueDate: `${y + 1}-03-15` },
     { label: "ITR filing deadline (non-audit)", dueDate: `${y + 1}-07-31` },
   ];
+}
+
+export interface RecordDeadline {
+  label: string;
+  dueDate: string; // yyyy-mm-dd
+  amount: number;
+}
+
+/** Tax-due deadlines derived from the user's actual income ledger. */
+export async function recordDeadlines(userId: string): Promise<RecordDeadline[]> {
+  const records = await prisma.incomeRecord.findMany({
+    where: { userId, paymentStatus: { not: "paid" } },
+    orderBy: { taxPayDeadline: "asc" },
+    include: { platform: { select: { name: true } } },
+  });
+
+  // Multiple entries can share a platform + deadline — merge those into one
+  // reminder with the combined amount.
+  const merged = new Map<string, RecordDeadline>();
+  for (const r of records) {
+    const dueDate = r.taxPayDeadline.toISOString().slice(0, 10);
+    const label = `Tax due — ${r.platform.name}${r.clientName ? ` · ${r.clientName}` : ""}`;
+    const key = `${label}|${dueDate}`;
+    const existing = merged.get(key);
+    if (existing) {
+      existing.amount += Number(r.incomeAmount);
+    } else {
+      merged.set(key, { label, dueDate, amount: Number(r.incomeAmount) });
+    }
+  }
+  return [...merged.values()];
+}
+
+/** Everything a long-running reminder sync should push to Google Calendar. */
+export async function allSyncableDeadlines(userId: string) {
+  return [...statutoryDeadlines(), ...(await recordDeadlines(userId))];
 }
 
 async function freshAccessToken(userId: string): Promise<{ token: string; refreshToken: string | null } | null> {
@@ -71,8 +109,6 @@ export const calendarService = {
   async exchangeCode(code: string, userId: string, mobile: string) {
     const oauth = oauthClient();
     const { tokens } = await oauth.getToken(code);
-    console.log(tokens)
-    if(!tokens.id_token) throw new Error("No id token");
     await prisma.calendarToken.upsert({
       where: { userId },
       update: {
@@ -102,7 +138,7 @@ export const calendarService = {
     await prisma.calendarToken.deleteMany({ where: { userId } });
   },
 
-  /** Create the statutory deadline events; returns per-label status. */
+  /** Create an event per deadline (statutory + ledger-derived); returns per-label status. */
   async syncReminders(userId: string): Promise<{ label: string; status: "created" | "exists" }[]> {
     const creds = await freshAccessToken(userId);
     if (!creds) {
@@ -118,7 +154,7 @@ export const calendarService = {
     const existing = await prisma.deadlineReminder.findMany({ where: { userId } });
     const results: { label: string; status: "created" | "exists" }[] = [];
 
-    for (const d of statutoryDeadlines()) {
+    for (const d of await allSyncableDeadlines(userId)) {
       const due = new Date(`${d.dueDate}T09:00:00Z`);
       let row = existing.find((r) => r.label === d.label && sameDay(r.dueDate, due));
 
@@ -131,11 +167,14 @@ export const calendarService = {
         row = await prisma.deadlineReminder.create({ data: { userId, label: d.label, dueDate: due } });
       }
 
+      const ledgerDerived = "amount" in d && (d as RecordDeadline).amount > 0;
       const res = await calendar.events.insert({
         calendarId: "primary",
         requestBody: {
           summary: `Gig · ${d.label}`,
-          description: "Auto-added by Gig — your ITR/advance-tax deadline.",
+          description: ledgerDerived
+            ? `Auto-added by Gig — tax payable for logged income up to ${d.dueDate}.`
+            : "Auto-added by Gig — your ITR/advance-tax deadline.",
           start: { date: d.dueDate },
           end: { date: nextDay(d.dueDate) },
           reminders: {
@@ -164,6 +203,9 @@ export const calendarService = {
       orderBy: { dueDate: "asc" },
     });
     const connected = (await prisma.calendarToken.findUnique({ where: { userId }, select: { userId: true } })) != null;
+    const syncedLabels = new Set(
+      rows.filter((r) => Boolean(r.eventId)).map((r) => `${r.label}|${r.dueDate.toISOString().slice(0, 10)}`)
+    );
     return {
       connected,
       reminders: rows.map((r) => ({
@@ -175,8 +217,10 @@ export const calendarService = {
       // Always show the statutory list even before sync, with sync state.
       statutory: statutoryDeadlines().map((d) => ({
         ...d,
-        syncedToCalendar: rows.some((r) => r.label === d.label && sameDay(r.dueDate, new Date(`${d.dueDate}T00:00:00Z`)) && Boolean(r.eventId)),
+        syncedToCalendar: syncedLabels.has(`${d.label}|${d.dueDate}`),
       })),
+      // Dynamic deadlines straight off the user's income ledger.
+      recordDeadlines: await recordDeadlines(userId),
     };
   },
 };

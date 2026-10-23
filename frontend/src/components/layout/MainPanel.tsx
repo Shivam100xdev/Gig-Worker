@@ -76,7 +76,17 @@ function LedgerSection() {
 }
 
 function EmptyState({ hasPlatforms }: { hasPlatforms: boolean }) {
-  return (<div className="">
-
-    </div>);
+  if (!hasPlatforms) {
+    return (
+      <div className="rounded-lg border border-dashed border-ledger-line p-8 text-center">
+        <p className="text-sm text-ledger-text">Add your first platform to start logging income.</p>
+        <p className="mt-1 text-xs text-ledger-muted">Each platform keeps its own ledger — totals combine on the dashboard.</p>
+      </div>
+      );
+  }
+  return (
+    <div className="rounded-lg border border-dashed border-ledger-line p-8 text-center">
+      <p className="text-sm text-ledger-text">Select a platform in the sidebar to log income.</p>
+    </div>
+  );
 }

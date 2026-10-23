@@ -32,14 +32,25 @@ export function IncomeForm({ platformId }: { platformId: string }) {
     setValues((prev) => ({ ...prev, [field]: value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const found = validateIncomeForm(values);
     setIssues(found);
     if (found.length > 0) return;
-    addRecord(values, deductionSource);
-    setValues(EMPTY_FORM);
-    setDeductionSource("none");
+    setBusy(true);
+    setSaveError(null);
+    try {
+      await addRecord(values, deductionSource);
+      setValues(EMPTY_FORM);
+      setDeductionSource("none");
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Couldn't save the entry — is the backend running?");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -125,7 +136,9 @@ export function IncomeForm({ platformId }: { platformId: string }) {
         />
       </div>
 
-      <Button type="submit" variant="primary" className="mt-1 self-start">
+      {saveError && <p className="text-xs text-signal-overdue">{saveError}</p>}
+
+      <Button type="submit" variant="primary" loading={busy} className="mt-1 self-start">
         <Plus size={14} />
         Add entry
       </Button>
