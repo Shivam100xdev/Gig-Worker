@@ -112,4 +112,4 @@ GET  /api/faqs
   ≥1 entry, and receipts confirmed for every paid TDS entry.
 - GST advisory at ₹20L aggregate services turnover is a nudge, not advice.
 - Presumptive taxation (44ADA) and Chapter VI-A deductions are out of scope
-  for the estimator; the exported JSON gives a CA everything needed.
+  for the estimator, the exported JSON gives a CA everything needed.
