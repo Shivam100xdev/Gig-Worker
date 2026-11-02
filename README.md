@@ -44,8 +44,7 @@ npm run dev                   # http://localhost:5173
 
 **Mock mode (default).** `VITE_USE_MOCKS` unset/`true` runs the whole app
 against in-browser fakes: OTP is shown on screen (`123456`), OCR produces
-sample transactions, GST/IRN, calendar sync and AI chat all simulate. Data
-persists to `localStorage`. Great for UI work — no backend needed.
+sample transactions, GST/IRN, calendar sync and AI chat all simulate. 
 
 **Real mode.** Set `VITE_USE_MOCKS=false` and `VITE_API_BASE_URL=http://localhost:4000/api`,
 start the backend, and every section runs against Postgres + Redis through
